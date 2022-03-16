@@ -13,7 +13,7 @@ end
 -- get first node in current line, ignoring certain types
 M.GetFirstInLine = function(ignored_types)
     -- types to ignore
-    local ignored_types = { "block", "source" }
+    local ignored_types = { "block", "source", "source_file" }
 
     -- get first node in current line
     -- we start from current node and go back and up
@@ -49,9 +49,45 @@ M.GetFirstInLine = function(ignored_types)
     return node_prev
 end
 
+local rustFunctionDescription = function(node)
+    local comment = { "/// function description" }
+    local children = ts_utils.get_named_children(node)
+    local parameters = nil
+    for _, v in ipairs(children) do
+        if v:type() == "parameters" then
+            parameters = ts_utils.get_named_children(v)
+        end
+    end
+
+    if not next(parameters) then return comment end
+
+    table.insert(comment, "///")
+    table.insert(comment, "/// # Arguments")
+    table.insert(comment, "///")
+
+    for _, v in ipairs(parameters) do
+        -- P(ts_utils.get_node_text(v))
+        for _, v2 in ipairs(ts_utils.get_named_children(v)) do
+            if v2:type() == "identifier" then
+                local c = "/// * `" .. ts_utils.get_node_text(v2)[1] .. "` - "
+                table.insert(comment, c)
+            end
+        end
+    end
+    -- P(children)
+
+    return comment
+    -- return { "/// Function description",
+    --     "///",
+    --     "/// # Arguments",
+    --     "///",
+    --     "/// * `name` - ",
+    -- }
+end
+
 local testDict = {
-    go = {
-        function_declaration = function(node) return "result: " .. node:type() end
+    rust = {
+        function_item = rustFunctionDescription
     }
 }
 
@@ -72,13 +108,21 @@ M.GetLineComment = function()
         return
     end
 
-    print(testDict[filetype][type](node))
+    -- print(testDict[filetype][type](node))
+    return testDict[filetype][type](node)
 end
 
-M.WriteLineComment = function()
+M.WriteLineComment = function(comment)
     local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
     local line = cursor_row - 1
-    vim.api.nvim_buf_set_lines(0, line, line, true, { "test" })
+    vim.api.nvim_buf_set_lines(0, line, line, true, comment)
+end
+
+M.CommentLine = function()
+    local comment = M.GetLineComment()
+    if comment ~= nil then
+        M.WriteLineComment(comment)
+    end
 end
 
 
