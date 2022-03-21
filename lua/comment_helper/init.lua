@@ -1,4 +1,3 @@
-local ts_locals = require "nvim-treesitter.locals"
 local ts_utils = require "nvim-treesitter.ts_utils"
 
 local M = {}
@@ -12,8 +11,6 @@ end
 
 -- get first node in current line, ignoring certain types
 M.GetFirstInLine = function(ignored_types)
-    -- types to ignore
-    local ignored_types = { "block", "source", "source_file" }
 
     -- get first node in current line
     -- we start from current node and go back and up
@@ -59,14 +56,13 @@ local rustFunctionDescription = function(node)
         end
     end
 
-    if not next(parameters) then return comment end
+    if not next(parameters) then return { result = comment, type = "text" } end
 
     table.insert(comment, "///")
     table.insert(comment, "/// # Arguments")
     table.insert(comment, "///")
 
     for _, v in ipairs(parameters) do
-        -- P(ts_utils.get_node_text(v))
         for _, v2 in ipairs(ts_utils.get_named_children(v)) do
             if v2:type() == "identifier" then
                 local c = "/// * `" .. ts_utils.get_node_text(v2)[1] .. "` - "
@@ -74,15 +70,57 @@ local rustFunctionDescription = function(node)
             end
         end
     end
-    -- P(children)
 
-    return comment
-    -- return { "/// Function description",
-    --     "///",
-    --     "/// # Arguments",
-    --     "///",
-    --     "/// * `name` - ",
-    -- }
+    return { result = comment, type = "text" }
+end
+
+local rustFunctionDescriptionSnippet = function(node)
+    local ls = require('luasnip')
+    local s = ls.s
+    local fmt = require("luasnip.extras.fmt").fmt
+    local i = ls.insert_node
+    local t = ls.t
+    local rep = require("luasnip.extras").rep
+
+    local snippet_text = { "/// function description" }
+    local snippet_params = {}
+    local param_count = 0
+
+    local children = ts_utils.get_named_children(node)
+    local parameters = nil
+    for _, v in ipairs(children) do
+        if v:type() == "parameters" then
+            parameters = ts_utils.get_named_children(v)
+        end
+    end
+
+    if not next(parameters) then
+        snippet_text = table.concat(snippet_text, "\n")
+        local snippet = s("", { t(snippet_text) })
+        return { result = snippet, type = "luasnip" }
+        -- return snippet_text 
+    end
+
+    table.insert(snippet_text, "///")
+    table.insert(snippet_text, "/// # Arguments")
+    table.insert(snippet_text, "///")
+
+    for _, v in ipairs(parameters) do
+        for _, v2 in ipairs(ts_utils.get_named_children(v)) do
+            if v2:type() == "identifier" then
+                local c = "/// * `" .. ts_utils.get_node_text(v2)[1] .. "` - {}"
+                table.insert(snippet_text, c)
+                param_count = param_count + 1
+                table.insert(snippet_params, i(param_count))
+            end
+        end
+    end
+
+    snippet_text = table.concat(snippet_text, "\n")
+
+    local snippet = s("", fmt(snippet_text, snippet_params))
+
+    return { result = snippet, type = "luasnip" }
 end
 
 local testDict = {
@@ -93,22 +131,21 @@ local testDict = {
 
 M.GetLineComment = function()
     local filetype = vim.api.nvim_buf_get_option(0, 'filetype')
-    -- local filetype = "asdasd"
-
-    local ignored_types = { "block", "source" }
-    local node = M.GetFirstInLine(ignored_types)
-    local type = node:type()
 
     if testDict[filetype] == nil then
         print("filetype not supported")
         return
     end
+
+    local ignored_types = { "block", "source" }
+    local node = M.GetFirstInLine(ignored_types)
+    local type = node:type()
+
     if testDict[filetype][type] == nil then
         print("node type not suported")
         return
     end
 
-    -- print(testDict[filetype][type](node))
     return testDict[filetype][type](node)
 end
 
@@ -118,12 +155,35 @@ M.WriteLineComment = function(comment)
     vim.api.nvim_buf_set_lines(0, line, line, true, comment)
 end
 
+M.TriggerSnippet = function(snippet)
+    local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
+    local line = cursor_row - 1
+
+    local ls = require('luasnip')
+
+    -- create blank line above
+    vim.api.nvim_buf_set_lines(0, line, line, true, { "" })
+
+    ls.snip_expand(snippet, { pos = { line, 0 } })
+end
+
 M.CommentLine = function()
     local comment = M.GetLineComment()
-    if comment ~= nil then
-        M.WriteLineComment(comment)
+    if comment ~= nil and comment.type == "text" then
+        M.WriteLineComment(comment.result)
     end
 end
 
+M.SnipLine = function()
+    local ignored_types = { "block", "source" }
+    local node = M.GetFirstInLine(ignored_types)
+    local snippet = rustFunctionDescriptionSnippet(node)
+    if snippet ~= nil and snippet.type == "luasnip" then
+        M.TriggerSnippet(snippet.result)
+    end
+end
+
+vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").CommentLine()<CR><cmd>w<CR>', {})
+vim.api.nvim_set_keymap('n', '<leader>sl', '<cmd> lua require("comment_helper").SnipLine()<CR><cmd>w<CR>', {})
 
 return M
