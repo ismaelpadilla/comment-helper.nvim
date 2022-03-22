@@ -129,6 +129,11 @@ M.TriggerSnippet = function(snippet, position)
     ls.snip_expand(snippet, { pos = { line, indent_amount } })
 end
 
+--- Turn a snippet into a list of Lines.
+local snippet_to_text = function(snippet)
+    return snippet:get_static_text()
+end
+
 M.CommentLine = function()
     local comment = M.GetLineComment()
     if comment == nil then return end
@@ -138,7 +143,16 @@ M.CommentLine = function()
     if comment.type == "text" then
         M.WriteLineComment(comment.result, comment.position)
     elseif comment.type == "luasnip" then
-        M.TriggerSnippet(comment.result, comment.position)
+        if config.luasnip_enabled then
+            M.TriggerSnippet(comment.result, comment.position)
+        elseif config.snippets_to_text then
+            local snippet_as_text = snippet_to_text(comment.result)
+            M.WriteLineComment(snippet_as_text, comment.position)
+        end
+    end
+
+    if config.post_hook ~= nil then
+        config.post_hook()
     end
 end
 
