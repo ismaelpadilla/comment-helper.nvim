@@ -10,7 +10,7 @@ M.GetCoords = function(node)
 end
 
 -- get first node in current line, ignoring certain types
-M.GetFirstInLine = function(ignored_types)
+M.GetFirstNodeInLine = function(ignored_types)
 
     -- get first node in current line
     -- we start from current node and go back and up
@@ -56,7 +56,7 @@ local rustFunctionDescription = function(node)
         end
     end
 
-    if not next(parameters) then return { result = comment, type = "text" } end
+    if not next(parameters) then return { result = comment, type = "text", position = "above" } end
 
     table.insert(comment, "///")
     table.insert(comment, "/// # Arguments")
@@ -71,7 +71,7 @@ local rustFunctionDescription = function(node)
         end
     end
 
-    return { result = comment, type = "text" }
+    return { result = comment, type = "text", position = "above" }
 end
 
 local rustFunctionDescriptionSnippet = function(node)
@@ -79,12 +79,11 @@ local rustFunctionDescriptionSnippet = function(node)
     local s = ls.s
     local fmt = require("luasnip.extras.fmt").fmt
     local i = ls.insert_node
-    local t = ls.t
-    local rep = require("luasnip.extras").rep
 
-    local snippet_text = { "/// function description" }
+    local snippet_text = { "/// {}" }
     local snippet_params = {}
-    local param_count = 0
+    table.insert(snippet_params, i(1, "function description"))
+    local param_count = 1
 
     local children = ts_utils.get_named_children(node)
     local parameters = nil
@@ -96,9 +95,8 @@ local rustFunctionDescriptionSnippet = function(node)
 
     if not next(parameters) then
         snippet_text = table.concat(snippet_text, "\n")
-        local snippet = s("", { t(snippet_text) })
-        return { result = snippet, type = "luasnip" }
-        -- return snippet_text 
+        local snippet = s("", fmt(snippet_text, snippet_params))
+        return { result = snippet, type = "luasnip", position = "above" }
     end
 
     table.insert(snippet_text, "///")
@@ -120,7 +118,7 @@ local rustFunctionDescriptionSnippet = function(node)
 
     local snippet = s("", fmt(snippet_text, snippet_params))
 
-    return { result = snippet, type = "luasnip" }
+    return { result = snippet, type = "luasnip", position = "above" }
 end
 
 local testDict = {
@@ -138,7 +136,7 @@ M.GetLineComment = function()
     end
 
     local ignored_types = { "block", "source" }
-    local node = M.GetFirstInLine(ignored_types)
+    local node = M.GetFirstNodeInLine(ignored_types)
     local type = node:type()
 
     if testDict[filetype][type] == nil then
@@ -149,37 +147,63 @@ M.GetLineComment = function()
     return testDict[filetype][type](node)
 end
 
-M.WriteLineComment = function(comment)
+M.WriteLineComment = function(comment, position)
     local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
-    local line = cursor_row - 1
+
+    local line
+    if position == "above" then
+        line = cursor_row - 1
+    elseif position == "below" then
+        line = cursor_row
+    end
+
+    -- indent every line
+    local indent_amount = vim.fn.indent(cursor_row)
+    local indent_text = string.rep(" ", indent_amount)
+
+    comment = vim.tbl_map(
+        function(c) return indent_text .. c end,
+        comment)
+
     vim.api.nvim_buf_set_lines(0, line, line, true, comment)
 end
 
-M.TriggerSnippet = function(snippet)
+M.TriggerSnippet = function(snippet, position)
     local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
-    local line = cursor_row - 1
+    local line
+
+    if position == "above" then
+        line = cursor_row - 1
+    elseif position == "below" then
+        line = cursor_row
+    end
 
     local ls = require('luasnip')
 
-    -- create blank line above
-    vim.api.nvim_buf_set_lines(0, line, line, true, { "" })
+    local indent_amount = vim.fn.indent(cursor_row)
+    local indent_text = string.rep(" ", indent_amount)
 
-    ls.snip_expand(snippet, { pos = { line, 0 } })
+    -- create blank line above
+    vim.api.nvim_buf_set_lines(0, line, line, true, { indent_text })
+
+    ls.snip_expand(snippet, { pos = { line, indent_amount } })
 end
 
 M.CommentLine = function()
     local comment = M.GetLineComment()
     if comment ~= nil and comment.type == "text" then
-        M.WriteLineComment(comment.result)
+        comment.position = comment.position or "above" -- place above by default
+        M.WriteLineComment(comment.result, comment.position)
     end
 end
 
 M.SnipLine = function()
     local ignored_types = { "block", "source" }
-    local node = M.GetFirstInLine(ignored_types)
+    local node = M.GetFirstNodeInLine(ignored_types)
     local snippet = rustFunctionDescriptionSnippet(node)
     if snippet ~= nil and snippet.type == "luasnip" then
-        M.TriggerSnippet(snippet.result)
+        snippet.position = snippet.position or "above" -- place above by default
+        M.TriggerSnippet(snippet.result, snippet.position)
     end
 end
 
