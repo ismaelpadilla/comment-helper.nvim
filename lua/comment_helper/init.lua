@@ -5,6 +5,24 @@ local M = {}
 M._support_table = {
 }
 
+local config = {
+    -- Enable luasnip snippets.
+    luasnip_enabled = false,
+
+    -- If luasnip isn't supported and we receive a snippet as a comment,
+    -- attempt to turn it into text and insert it.
+    snippets_to_text = false,
+
+    -- Function to call after a comment is placed.
+    post_hook = nil
+}
+
+M.setup = function(cfg)
+    config = vim.tbl_deep_extend("force",
+        config,
+        cfg)
+end
+
 -- get node coordinates in a printable format
 M.GetCoords = function(node)
     local start_row, start_col = node:start()
@@ -128,7 +146,7 @@ end
 -- @param lang The language to add support for.
 -- @param node_type The node type to add support for.
 -- @param fn The function to call to obtain a comment for a specific node.
--- @para ignored_types when attempting to comment a line, ignored_types will be ignored.
+-- @param ignored_types when attempting to comment a line, ignored_types will be ignored.
 M.add = function(lang, node_type, fn, ignored_types)
     if M._support_table[lang] == nil then
         M._support_table[lang] = { [node_type] = { fn = fn, ignored_types = ignored_types } }
@@ -140,6 +158,8 @@ end
 -- code from now on is for development/testing purposes only
 -- in a real scenario, this code would be part of our nvim configuration or part of another plugin
 vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").CommentLine()<CR><cmd>w<CR>', {})
+
+M.setup({ luasnip_enabled = false, snippets_to_text = false })
 
 local rustFunctionDescription = function(node)
     local comment = { "/// function description" }
