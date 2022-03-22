@@ -2,6 +2,9 @@ local ts_utils = require "nvim-treesitter.ts_utils"
 
 local M = {}
 
+M._support_table = {
+}
+
 -- get node coordinates in a printable format
 M.GetCoords = function(node)
     local start_row, start_col = node:start()
@@ -9,7 +12,7 @@ M.GetCoords = function(node)
     return "[" .. start_row .. ", " .. start_col .. "] - [" .. end_row .. ", " .. end_col .. "]"
 end
 
--- get first node in current line, ignoring certain types
+-- get first treesitter node in current line, ignoring certain types
 M.GetFirstNodeInLine = function(ignored_types)
 
     -- get first node in current line
@@ -45,6 +48,98 @@ M.GetFirstNodeInLine = function(ignored_types)
     print("found " .. node_prev:type())
     return node_prev
 end
+
+M.GetLineComment = function()
+    local filetype = vim.api.nvim_buf_get_option(0, 'filetype')
+
+    if M._support_table[filetype] == nil then
+        print("filetype not supported")
+        return
+    end
+
+    local ignored_types = {}
+    local node = M.GetFirstNodeInLine(ignored_types)
+    local type = node:type()
+
+    if M._support_table[filetype][type] == nil then
+        print("node type not suported")
+        return
+    end
+
+    return M._support_table[filetype][type].fn(node)
+end
+
+M.WriteLineComment = function(comment, position)
+    local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
+
+    local line
+    if position == "above" then
+        line = cursor_row - 1
+    elseif position == "below" then
+        line = cursor_row
+    end
+
+    -- indent every line
+    local indent_amount = vim.fn.indent(cursor_row)
+    local indent_text = string.rep(" ", indent_amount)
+
+    comment = vim.tbl_map(
+        function(c) return indent_text .. c end,
+        comment)
+
+    vim.api.nvim_buf_set_lines(0, line, line, true, comment)
+end
+
+M.TriggerSnippet = function(snippet, position)
+    local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
+    local line
+
+    if position == "above" then
+        line = cursor_row - 1
+    elseif position == "below" then
+        line = cursor_row
+    end
+
+    local ls = require('luasnip')
+
+    local indent_amount = vim.fn.indent(cursor_row)
+    local indent_text = string.rep(" ", indent_amount)
+
+    -- create blank line above
+    vim.api.nvim_buf_set_lines(0, line, line, true, { indent_text })
+
+    ls.snip_expand(snippet, { pos = { line, indent_amount } })
+end
+
+M.CommentLine = function()
+    local comment = M.GetLineComment()
+    if comment == nil then return end
+
+    -- place above by default
+    comment.position = comment.position or "above"
+    if comment.type == "text" then
+        M.WriteLineComment(comment.result, comment.position)
+    elseif comment.type == "luasnip" then
+        M.TriggerSnippet(comment.result, comment.position)
+    end
+end
+
+--- Add comment support for a specific node type of a specifi comment.
+-- @param lang The language to add support for.
+-- @param node_type The node type to add support for.
+-- @param fn The function to call to obtain a comment for a specific node.
+-- @para ignored_types when attempting to comment a line, ignored_types will be ignored.
+M.add = function(lang, node_type, fn, ignored_types)
+    if M._support_table[lang] == nil then
+        M._support_table[lang] = { [node_type] = { fn = fn, ignored_types = ignored_types } }
+    else
+        M._support_table[lang][node_type] = { fn = fn, ignored_types = ignored_types }
+    end
+end
+
+-- code from now on is for development/testing purposes only
+-- in a real scenario, this code would be part of our nvim configuration or part of another plugin
+vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").CommentLine()<CR><cmd>w<CR>', {})
 
 local rustFunctionDescription = function(node)
     local comment = { "/// function description" }
@@ -121,93 +216,7 @@ local rustFunctionDescriptionSnippet = function(node)
     return { result = snippet, type = "luasnip", position = "above" }
 end
 
-local testDict = {
-    rust = {
-        function_item = rustFunctionDescription
-    }
-}
-
-M.GetLineComment = function()
-    local filetype = vim.api.nvim_buf_get_option(0, 'filetype')
-
-    if testDict[filetype] == nil then
-        print("filetype not supported")
-        return
-    end
-
-    local ignored_types = { "block", "source" }
-    local node = M.GetFirstNodeInLine(ignored_types)
-    local type = node:type()
-
-    if testDict[filetype][type] == nil then
-        print("node type not suported")
-        return
-    end
-
-    return testDict[filetype][type](node)
-end
-
-M.WriteLineComment = function(comment, position)
-    local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
-
-    local line
-    if position == "above" then
-        line = cursor_row - 1
-    elseif position == "below" then
-        line = cursor_row
-    end
-
-    -- indent every line
-    local indent_amount = vim.fn.indent(cursor_row)
-    local indent_text = string.rep(" ", indent_amount)
-
-    comment = vim.tbl_map(
-        function(c) return indent_text .. c end,
-        comment)
-
-    vim.api.nvim_buf_set_lines(0, line, line, true, comment)
-end
-
-M.TriggerSnippet = function(snippet, position)
-    local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
-    local line
-
-    if position == "above" then
-        line = cursor_row - 1
-    elseif position == "below" then
-        line = cursor_row
-    end
-
-    local ls = require('luasnip')
-
-    local indent_amount = vim.fn.indent(cursor_row)
-    local indent_text = string.rep(" ", indent_amount)
-
-    -- create blank line above
-    vim.api.nvim_buf_set_lines(0, line, line, true, { indent_text })
-
-    ls.snip_expand(snippet, { pos = { line, indent_amount } })
-end
-
-M.CommentLine = function()
-    local comment = M.GetLineComment()
-    if comment ~= nil and comment.type == "text" then
-        comment.position = comment.position or "above" -- place above by default
-        M.WriteLineComment(comment.result, comment.position)
-    end
-end
-
-M.SnipLine = function()
-    local ignored_types = { "block", "source" }
-    local node = M.GetFirstNodeInLine(ignored_types)
-    local snippet = rustFunctionDescriptionSnippet(node)
-    if snippet ~= nil and snippet.type == "luasnip" then
-        snippet.position = snippet.position or "above" -- place above by default
-        M.TriggerSnippet(snippet.result, snippet.position)
-    end
-end
-
-vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").CommentLine()<CR><cmd>w<CR>', {})
-vim.api.nvim_set_keymap('n', '<leader>sl', '<cmd> lua require("comment_helper").SnipLine()<CR><cmd>w<CR>', {})
+M.add("rust", "function_item", rustFunctionDescriptionSnippet, {})
+-- M.add("rust", "function_item", rustFunctionDescription, {})
 
 return M
