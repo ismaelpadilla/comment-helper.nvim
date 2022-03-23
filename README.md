@@ -5,7 +5,7 @@ The end goal is to have language-agnostic support for adding useful comments to 
 The idea is to support adding basic text comments and [LuaSnip](https://github.com/L3MON4D3/LuaSnip) snippets.
 
 <p align="center">
-  <img alt="Preview" src="https://i.imgur.com/EzyFgtK.gif">
+  <img alt="Preview" src="https://i.imgur.com/7k7ofRb.gif">
 </p>
 
 ### Installation
@@ -47,7 +47,7 @@ The following examples are using [comment-helper-rust.nvim](https://github.com/i
 
 With LuaSnip:
 <p align="center">
-  <img alt="Preview" src="https://i.imgur.com/EzyFgtK.gif">
+  <img alt="Preview" src="https://i.imgur.com/7k7ofRb.gif">
 </p>
 
 Text comments:
