@@ -43,14 +43,14 @@ vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").
 ```
 ### See it in action
 
-Text comments:
-<p align="center">
-  <img alt="Preview" src="https://i.imgur.com/Skz8fDc.gif">
-</p>
+The following examples are using [comment-helper-rust.nvim](https://github.com/ismaelpadilla/comment-helper-rust.nvim) to document Rust functions:
 
 With LuaSnip:
 <p align="center">
   <img alt="Preview" src="https://i.imgur.com/EzyFgtK.gif">
 </p>
 
-The current code has stuff that is useful for develompent and will be removed later (such as the Rust-specific functions).
+Text comments:
+<p align="center">
+  <img alt="Preview" src="https://i.imgur.com/Skz8fDc.gif">
+</p>
