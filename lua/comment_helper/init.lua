@@ -5,7 +5,10 @@ local M = {}
 M._support_table = {}
 -- support table has the following shape:
 -- M._support_table = {
---   [language] = { { node_type = { fn = ..., ignored_types = ... } }
+--   [language] = {
+--     node_types = { node_type = { fn = ..., ignored_types = ... },
+--     ignored_types = { "type_1", "type_2" }
+--   }
 -- }
 
 local config = {
@@ -86,12 +89,12 @@ M.GetLineComment = function()
   local node = M.GetFirstNodeInLine(ignored)
   local type = node:type()
 
-  if M._support_table[filetype][type] == nil then
+  if M._support_table[filetype].node_types[type] == nil then
     print "node type not suported"
     return
   end
 
-  return M._support_table[filetype][type].fn(node, get_options())
+  return M._support_table[filetype].node_types[type].fn(node, get_options())
 end
 
 M.WriteLineComment = function(comment, position)
@@ -169,12 +172,25 @@ end
 -- @param lang The language to add support for.
 -- @param node_type The node type to add support for.
 -- @param fn The function to call to obtain a comment for a specific node.
--- @param ignored_types when attempting to comment a line, ignored_types will be ignored.
-M.add = function(lang, node_type, fn, ignored_types)
+M.add = function(lang, node_type, fn)
   if M._support_table[lang] == nil then
-    M._support_table[lang] = { [node_type] = { fn = fn, ignored_types = ignored_types } }
+    M._support_table[lang] = {
+      node_types = { [node_type] = { fn = fn } },
+      ignored_types = {},
+    }
   else
-    M._support_table[lang][node_type] = { fn = fn, ignored_types = ignored_types }
+    M._support_table[lang].node_types[node_type] = { fn = fn }
+  end
+end
+
+M.set_ignored_types = function(lang, ignored_types)
+  if M._support_table[lang] == nil then
+    M._support_table[lang] = {
+      node_types = {},
+      ignored_types = ignored_types,
+    }
+  else
+    M._support_table[lang].ignored_types = ignored_types
   end
 end
 
