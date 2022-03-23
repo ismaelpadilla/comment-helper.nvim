@@ -3,6 +3,10 @@ local ts_utils = require "nvim-treesitter.ts_utils"
 local M = {}
 
 M._support_table = {}
+-- support table has the following shape:
+-- M._support_table = {
+--   [language] = { { node_type = { fn = ..., ignored_types = ... } }
+-- }
 
 local config = {
   -- Enable luasnip snippets.
@@ -15,6 +19,11 @@ local config = {
   -- Function to call after a comment is placed.
   post_hook = nil,
 }
+
+--- get options table to pass on to other plugins
+local get_options = function()
+  return { luasnip_enabled = config.luasnip_enabled }
+end
 
 M.setup = function(cfg)
   config = vim.tbl_deep_extend("force", config, cfg)
@@ -73,8 +82,8 @@ M.GetLineComment = function()
     return
   end
 
-  local ignored_types = {}
-  local node = M.GetFirstNodeInLine(ignored_types)
+  local ignored = M._support_table[filetype].ignored_types or {}
+  local node = M.GetFirstNodeInLine(ignored)
   local type = node:type()
 
   if M._support_table[filetype][type] == nil then
@@ -82,7 +91,7 @@ M.GetLineComment = function()
     return
   end
 
-  return M._support_table[filetype][type].fn(node)
+  return M._support_table[filetype][type].fn(node, get_options())
 end
 
 M.WriteLineComment = function(comment, position)
@@ -168,91 +177,5 @@ M.add = function(lang, node_type, fn, ignored_types)
     M._support_table[lang][node_type] = { fn = fn, ignored_types = ignored_types }
   end
 end
-
--- code from now on is for development/testing purposes only
--- in a real scenario, this code would be part of our nvim configuration or part of another plugin
-vim.api.nvim_set_keymap("n", "<leader>cl", '<cmd> lua require("comment_helper").CommentLine()<CR><cmd>w<CR>', {})
-
-M.setup { luasnip_enabled = false, snippets_to_text = false }
-
-local rustFunctionDescription = function(node)
-  local comment = { "/// function description" }
-  local children = ts_utils.get_named_children(node)
-  local parameters = nil
-  for _, v in ipairs(children) do
-    if v:type() == "parameters" then
-      parameters = ts_utils.get_named_children(v)
-    end
-  end
-
-  if not next(parameters) then
-    return { result = comment, type = "text", position = "above" }
-  end
-
-  table.insert(comment, "///")
-  table.insert(comment, "/// # Arguments")
-  table.insert(comment, "///")
-
-  for _, v in ipairs(parameters) do
-    for _, v2 in ipairs(ts_utils.get_named_children(v)) do
-      if v2:type() == "identifier" then
-        local c = "/// * `" .. ts_utils.get_node_text(v2)[1] .. "` - "
-        table.insert(comment, c)
-      end
-    end
-  end
-
-  return { result = comment, type = "text", position = "above" }
-end
-
-local rustFunctionDescriptionSnippet = function(node)
-  local ls = require "luasnip"
-  local s = ls.s
-  local fmt = require("luasnip.extras.fmt").fmt
-  local i = ls.insert_node
-
-  local snippet_text = { "/// {}" }
-  local snippet_params = {}
-  table.insert(snippet_params, i(1, "function description"))
-  local param_count = 1
-
-  local children = ts_utils.get_named_children(node)
-  local parameters = nil
-  for _, v in ipairs(children) do
-    if v:type() == "parameters" then
-      parameters = ts_utils.get_named_children(v)
-    end
-  end
-
-  if not next(parameters) then
-    snippet_text = table.concat(snippet_text, "\n")
-    local snippet = s("", fmt(snippet_text, snippet_params))
-    return { result = snippet, type = "luasnip", position = "above" }
-  end
-
-  table.insert(snippet_text, "///")
-  table.insert(snippet_text, "/// # Arguments")
-  table.insert(snippet_text, "///")
-
-  for _, v in ipairs(parameters) do
-    for _, v2 in ipairs(ts_utils.get_named_children(v)) do
-      if v2:type() == "identifier" then
-        local c = "/// * `" .. ts_utils.get_node_text(v2)[1] .. "` - {}"
-        table.insert(snippet_text, c)
-        param_count = param_count + 1
-        table.insert(snippet_params, i(param_count))
-      end
-    end
-  end
-
-  snippet_text = table.concat(snippet_text, "\n")
-
-  local snippet = s("", fmt(snippet_text, snippet_params))
-
-  return { result = snippet, type = "luasnip", position = "above" }
-end
-
-M.add("rust", "function_item", rustFunctionDescriptionSnippet, {})
--- M.add("rust", "function_item", rustFunctionDescription, {})
 
 return M
