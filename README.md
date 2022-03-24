@@ -10,6 +10,8 @@ The idea is to support adding basic text comments and [LuaSnip](https://github.c
 
 ### Installation
 
+Requires `nvim-treesitter`.
+
 Using [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```viml
