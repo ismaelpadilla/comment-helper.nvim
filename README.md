@@ -8,7 +8,7 @@ The idea is to support adding basic text comments and [LuaSnip](https://github.c
   <img alt="Preview" src="https://i.imgur.com/7k7ofRb.gif">
 </p>
 
-### Installation
+## Installation
 
 Requires `nvim-treesitter`.
 
@@ -18,7 +18,14 @@ Using [vim-plug](https://github.com/junegunn/vim-plug)
 Plug 'ismaelpadilla/comment-helper.nvim'
 ```
 
-### Configuration
+### Language-specific plugins:
+
+- Lua
+  - [ismaelpadilla/comment-helper-lua.nvim](https://github.com/ismaelpadilla/comment-helper-lua.nvim).
+- Rust
+  - [ismaelpadilla/comment-helper-rust.nvim](https://github.com/ismaelpadilla/comment-helper-rust.nvim)
+
+## Configuration
 
 Default config: 
 ```lua
@@ -36,14 +43,15 @@ require('comment_helper').setup({
 })
 ```
 
-### Usage
+## Usage
 
 Add keybinding for commenting:
 
 ```lua
 vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").comment_line()<CR>', {})
 ```
-### See it in action
+
+## See it in action
 
 The following examples are using [comment-helper-rust.nvim](https://github.com/ismaelpadilla/comment-helper-rust.nvim) to document Rust functions:
 
