@@ -50,17 +50,3 @@ Add keybinding for commenting:
 ```lua
 vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").comment_line()<CR>', {})
 ```
-
-## See it in action
-
-The following examples are using [comment-helper-rust.nvim](https://github.com/ismaelpadilla/comment-helper-rust.nvim) to document Rust functions:
-
-With LuaSnip:
-<p align="center">
-  <img alt="Preview" src="https://i.imgur.com/7k7ofRb.gif">
-</p>
-
-Text comments:
-<p align="center">
-  <img alt="Preview" src="https://i.imgur.com/Skz8fDc.gif">
-</p>
