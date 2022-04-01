@@ -41,7 +41,7 @@ require('comment_helper').setup({
 Add keybinding for commenting:
 
 ```lua
-vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").CommentLine()<CR>', {})
+vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd> lua require("comment_helper").comment_line()<CR>', {})
 ```
 ### See it in action
 

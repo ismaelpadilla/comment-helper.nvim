@@ -33,14 +33,14 @@ M.setup = function(cfg)
 end
 
 -- get node coordinates in a printable format
-M.GetCoords = function(node)
+M.get_coords = function(node)
   local start_row, start_col = node:start()
   local end_row, end_col = node:end_()
   return "[" .. start_row .. ", " .. start_col .. "] - [" .. end_row .. ", " .. end_col .. "]"
 end
 
 -- get first treesitter node in current line, ignoring certain types
-M.GetFirstNodeInLine = function(ignored_types)
+M.get_first_node_in_line = function(ignored_types)
   -- get first node in current line
   -- we start from current node and go back and up
   local node_cur = ts_utils.get_node_at_cursor()
@@ -77,7 +77,7 @@ M.GetFirstNodeInLine = function(ignored_types)
   return node_prev
 end
 
-M.GetLineComment = function()
+M.get_line_comment = function()
   local filetype = vim.api.nvim_buf_get_option(0, "filetype")
 
   if M._support_table[filetype] == nil then
@@ -86,7 +86,7 @@ M.GetLineComment = function()
   end
 
   local ignored = M._support_table[filetype].ignored_types or {}
-  local node = M.GetFirstNodeInLine(ignored)
+  local node = M.get_first_node_in_line(ignored)
   local type = node:type()
 
   if M._support_table[filetype].node_types[type] == nil then
@@ -97,7 +97,7 @@ M.GetLineComment = function()
   return M._support_table[filetype].node_types[type].fn(node, get_options())
 end
 
-M.WriteLineComment = function(comment, position)
+M.write_line_comment = function(comment, position)
   local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
 
   local line
@@ -118,7 +118,7 @@ M.WriteLineComment = function(comment, position)
   vim.api.nvim_buf_set_lines(0, line, line, true, comment)
 end
 
-M.TriggerSnippet = function(snippet, position)
+M.trigger_snippet = function(snippet, position)
   local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
   local line
 
@@ -144,8 +144,8 @@ local snippet_to_text = function(snippet)
   return snippet:get_static_text()
 end
 
-M.CommentLine = function()
-  local comment = M.GetLineComment()
+M.comment_line = function()
+  local comment = M.get_line_comment()
   if comment == nil then
     return
   end
@@ -153,13 +153,13 @@ M.CommentLine = function()
   -- place above by default
   comment.position = comment.position or "above"
   if comment.type == "text" then
-    M.WriteLineComment(comment.result, comment.position)
+    M.write_line_comment(comment.result, comment.position)
   elseif comment.type == "luasnip" then
     if config.luasnip_enabled then
-      M.TriggerSnippet(comment.result, comment.position)
+      M.trigger_snippet(comment.result, comment.position)
     elseif config.snippets_to_text then
       local snippet_as_text = snippet_to_text(comment.result)
-      M.WriteLineComment(snippet_as_text, comment.position)
+      M.write_line_comment(snippet_as_text, comment.position)
     end
   end
 
@@ -168,7 +168,7 @@ M.CommentLine = function()
   end
 end
 
---- Add comment support for a specific node type of a specifi comment.
+--- Add comment support for a specific node type of a specific language.
 -- @param lang The language to add support for.
 -- @param node_type The node type to add support for.
 -- @param fn The function to call to obtain a comment for a specific node.

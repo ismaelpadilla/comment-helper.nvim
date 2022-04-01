@@ -1,0 +1,76 @@
+==============================================================================
+                                                         *comment_helper.nvim*
+Comment helper is a plugin that adds support for adding useful documentation
+to pieces of code. This plugin is language-agnostic, and language-specific
+plugins can be used to add support to specific languages (see
+|comment_helper.add()|. 
+
+                                                      *comment_helper.setup()*
+comment_helper.setup({opts})
+    Set up function to be run by the user. Configures the defaults. Usage:
+>
+        require('comment_helper').setup({
+          -- Enable luasnip snippets.
+          luasnip_enabled = false,
+
+          -- If luasnip isn't supported and we receive a snippet as a comment,
+          -- attempt to turn it into text and insert it.
+          snippets_to_text = false,
+
+          -- Function to call after a comment is placed.
+          post_hook = nil,
+        })
+<
+
+                                                        *comment_helper.add()*
+comment_helper.add(lang, node_type, fn)
+    Add a comment support for a specific node of a specific language. Usage:
+    >
+        ch.add("lua", "function_declaration", function(...) ...)
+<
+    The function passed as the third parameter will be passed the following
+    parameters:
+        {node} Treesitter node.
+        {options} Table with the following shape: 
+            {luasnip_enabled} (boolean) True or false depending on user
+                                        config.
+
+    The function should return a table with the following keys:
+        {type} (string) Current supported types are "luasnip" and "text".
+        {position} (string) Current supported values are "above" or "below".
+                            The comment will be placed on the line above or
+                            below the current line depending on this key.
+                            This key may be omitted. If so, the comment will
+                            be placed on the line below the current line.
+        {result} (table)    If {type} is "luasnip", then {result} should be a
+                            LuaSnip snippet. 
+                            If type is "text", then {result} should be a list
+                            of strings. Each item will be placed in a
+                            different line, respecting the list order.
+
+
+                                          *comment_helper.set_ignored_types()*
+comment_helper.set_ignored_types(lang, ignored_types)
+    Set the ignored types for a specific language. >
+        ch.set_ignored_types("lua", {"chunk"})
+<
+
+
+                                     *comment_helper.get_first_node_in_line()*
+comment_helper.get_first_node_in_line(ignored_types)
+    Get the first treesitter node in the line in wich the cursor is placed.
+    The function accepts a list of types which should be ignored (see
+    |comment_helper.set_ignored_types()|. This is mainly used to avoid issues
+    in the first line of code.
+
+    Usage: >
+        require('comment_helper').get_first_node_in_line({ 'type1', 'type2' })
+<
+
+                                               *comment_helper.comment_line()*
+comment_helper.comment_line()
+    Insert appropiate comments for the line in which the cursor is placed. The
+    comments will be placed above or below the current line, respecting
+    indentation.
+
+vim:tw=78:ts=8:ft=help:norl:
