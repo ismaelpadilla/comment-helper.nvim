@@ -15,7 +15,7 @@ jobs:
           sudo apt-get install -y luarocks
           sudo luarocks install luacheck
       - name: Lint
-        run: luacheck lua/
+        run: luacheck lua/ --read-globals vim
 
   stylua:
     name: stylua
