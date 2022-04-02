@@ -51,7 +51,7 @@ M.get_first_node_in_line = function(ignored_types)
     return nil
   end
 
-  local node_prev = nil
+  local node_prev
   while true do
     node_prev = node_cur
     node_cur = ts_utils.get_previous_node(node_cur, false, false)
