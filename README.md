@@ -1,3 +1,7 @@
+# comment-helper.nvim
+[![Linting and style checking](https://github.com/ismaelpadilla/comment-helper.nvim/actions/workflows/lint.yml/badge.svg)](https://github.com/ismaelpadilla/comment-helper.nvim/actions/workflows/lint.yml)
+
+
 Everything is subject to change, including repo name!
 
 The end goal is to have language-agnostic support for adding useful comments to pieces of code. The main plugin (this repo) would expose useful functions for other plugins to provide language-specific comments.
